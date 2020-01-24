@@ -32,7 +32,7 @@ def test_img(net_g, datatest, args, return_probs=False, user_idx=-1):
 
     for idx, (data, target) in enumerate(data_loader):
         if args.gpu != -1:
-            data, target = data.cuda(), target.cuda()
+            data, target = data.to(args.device), target.to(args.device)
         log_probs = net_g(data)
         probs.append(log_probs)
 
@@ -54,8 +54,7 @@ def test_img(net_g, datatest, args, return_probs=False, user_idx=-1):
 
     if return_probs:
         return accuracy, test_loss, torch.cat(probs)
-    else:
-        return accuracy, test_loss
+    return accuracy, test_loss
 
 
 def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None):
@@ -69,7 +68,7 @@ def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None):
 
     for idx, (data, target) in enumerate(data_loader):
         if args.gpu != -1:
-            data, target = data.cuda(), target.cuda()
+            data, target = data.to(args.device), target.to(args.device)
         log_probs = net_g(data)
 
         # sum up batch loss

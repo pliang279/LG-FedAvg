@@ -30,6 +30,7 @@ if __name__ == '__main__':
 
     trans_mnist = transforms.Compose([transforms.ToTensor(),
                                       transforms.Normalize((0.1307,), (0.3081,))])
+
     if args.model == 'resnet':
         trans_cifar_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
                                                 transforms.RandomHorizontalFlip(),
@@ -64,6 +65,9 @@ if __name__ == '__main__':
         else:
             dict_users_train, rand_set_all = mnist_noniid(dataset_train, args.num_users, num_shards=200, num_imgs=300, train=True)
             dict_users_test, _ = mnist_noniid(dataset_test, args.num_users, num_shards=200, num_imgs=50, train=False, rand_set_all=rand_set_all)
+            save_path = './save/{}/randset_lg_{}_iid{}_num{}_C{}.pt'.format(
+                args.results_save, args.dataset, args.iid, args.num_users, args.frac)
+            np.save(save_path, rand_set_all)
 
     elif args.dataset == 'cifar10':
         dataset_train = datasets.CIFAR10('data/cifar10', train=True, download=True, transform=trans_cifar_train)
@@ -80,13 +84,12 @@ if __name__ == '__main__':
         dataset_test = datasets.CIFAR100('data/cifar100', train=False, download=True, transform=trans_cifar_val)
         if args.iid:
             dict_users_train = cifar10_iid(dataset_train, args.num_users)
+            dict_users_test = cifar10_iid(dataset_test, args.num_users)
         else:
-            exit('Error: only consider IID setting in CIFAR10')
+            dict_users_train, rand_set_all = cifar10_noniid(dataset_train, args.num_users, num_shards=1000, num_imgs=50, train=True)
+            dict_users_test, _ = cifar10_noniid(dataset_test, args.num_users, num_shards=1000, num_imgs=10, train=False, rand_set_all=rand_set_all)
     else:
         exit('Error: unrecognized dataset')
-
-    import pdb; pdb.set_trace()
-
     img_size = dataset_train[0][0].shape
 
     # build model
@@ -140,18 +143,20 @@ if __name__ == '__main__':
         for idx in range(args.num_users):
             net_local = net_local_list[idx]
             net_local.eval()
-            _, _, probs = test_img(net_local, dataset_test, args, return_probs=True, user_idx=idx)
+            # _, _, probs = test_img(net_local, dataset_test, args, return_probs=True, user_idx=idx)
+            acc, loss, probs = test_img(net_local, dataset_test, args, return_probs=True, user_idx=idx)
+            # print('Local model: {}, loss: {}, acc: {}'.format(idx, loss, acc))
             probs_all.append(probs.detach())
 
             preds = probs.data.max(1, keepdim=True)[1].cpu().numpy().reshape(-1)
             preds_all.append(preds)
 
-        labels = np.array(dataset_test.test_labels)
+        labels = np.array(dataset_test.targets)
         preds_probs = torch.mean(torch.stack(probs_all), dim=0)
 
         # ensemble metrics
         preds_avg = preds_probs.data.max(1, keepdim=True)[1].cpu().numpy().reshape(-1)
-        loss_test = criterion(preds_probs, torch.tensor(labels).cuda()).item()
+        loss_test = criterion(preds_probs, torch.tensor(labels).to(args.device)).item()
         acc_test = (preds_avg == labels).mean() * 100
 
         return loss_test, acc_test
@@ -226,6 +231,8 @@ if __name__ == '__main__':
     val_loss_pre, counter = 0, 0
     net_best = None
     best_loss = None
+    best_acc = None
+    best_epoch = None
     val_acc_list, net_list = [], []
 
     lr = args.lr
@@ -307,7 +314,8 @@ if __name__ == '__main__':
         acc_test_local, loss_test_local = test_img_local_all()
         acc_test_avg, loss_test_avg = test_img_avg_all()
 
-        if (iter + 1) % args.test_freq == 0: # this takes too much time, so we run it less frequently
+        # if (iter + 1) % args.test_freq == 0: # this takes too much time, so we run it less frequently
+        if (iter + 1) > 75:
             loss_test, acc_test = test_img_ensemble_all()
             print('Round {:3d}, Avg Loss {:.3f}, Loss (local): {:.3f}, Acc (local): {:.2f}, Loss (avg): {:.3}, Acc (avg): {:.2f}, Loss (ens) {:.3f}, Acc: (ens) {:.2f}, '.format(
                 iter, loss_avg, loss_test_local, acc_test_local, loss_test_avg, acc_test_avg, loss_test, acc_test))
@@ -323,6 +331,31 @@ if __name__ == '__main__':
             args.dataset, args.model, args.num_layers_keep, args.iid, args.num_users, args.frac,
             args.local_ep, args.grad_norm, args.local_ep_pretrain, args.load_fed, args.test_freq)
         np.save(results_save_path, final_results)
+
+        if best_acc is None or acc_test_local > best_acc:
+            best_acc = acc_test_local
+            best_epoch = iter
+
+            for user in range(args.num_users):
+                model_save_path = './save/{}/{}_{}_iid{}/'.format(
+                    args.results_save, args.dataset, 0, args.iid)
+                if not os.path.exists(model_save_path):
+                    os.makedirs(model_save_path)
+
+                model_save_path = './save/{}/{}_{}_iid{}/user{}.pt'.format(
+                    args.results_save, args.dataset, 0, args.iid, user)
+                torch.save(net_local_list[user].state_dict(), model_save_path)
+
+    for user in range(args.num_users):
+        model_save_path = './save/{}/{}_{}_iid{}/user{}.pt'.format(
+            args.results_save, args.dataset, 0, args.iid, user)
+
+        net_local = net_local_list[idx]
+        net_local.load_state_dict(torch.load(model_save_path))
+    loss_test, acc_test = test_img_ensemble_all()
+
+    print('Best model, iter: {}, acc: {}, acc (ens): {}'.format(best_epoch, best_acc, acc_test))
+
 
     # plot loss curve
     plt.figure()

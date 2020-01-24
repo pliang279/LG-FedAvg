@@ -93,10 +93,7 @@ def mnist_noniid(dataset, num_users, num_shards=200, num_imgs=300, train=True, r
     idx_shard = [i for i in range(num_shards)]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
-    if train:
-        labels = dataset.train_labels.numpy()
-    else:
-        labels = dataset.test_labels.numpy()
+    labels = np.array(dataset.targets)
 
     assert num_shards * num_imgs == len(labels)
 
@@ -181,10 +178,7 @@ def cifar10_noniid(dataset, num_users, num_shards=200, num_imgs=250, train=True,
     idx_shard = [i for i in range(num_shards)]
     dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
     idxs = np.arange(num_shards*num_imgs)
-    if train:
-        labels = np.array(dataset.train_labels)
-    else:
-        labels = np.array(dataset.test_labels)
+    labels = np.array(dataset.targets)
 
     assert num_shards * num_imgs == len(labels)
 
