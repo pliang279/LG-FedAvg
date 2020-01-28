@@ -1,3 +1,5 @@
+Code adapted from https://github.com/shaoxiongji/federated-learning
+
 # FedAvg
 
 Results can be reproduced using the following:
