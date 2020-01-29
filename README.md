@@ -3,12 +3,12 @@
 > Pytorch implementation for federated learning with local and global representations.
 
 Correspondence to: 
-  - Paul Liang (pliang@andrew.cmu.edu)
+  - Paul Liang (pliang@cs.cmu.edu)
   
 ## Paper
 
 [**Think Locally, Act Globally: Federated Learning with Local and Global Representations**](https://arxiv.org/abs/2001.01523)<br>
-[Paul Pu Liang](http://www.cs.cmu.edu/~pliang/)* , Terrance Liu*, [Liu Ziyin](http://cat.phys.s.u-tokyo.ac.jp/~zliu/), [Louis-Philippe Morency](https://www.cs.cmu.edu/~morency/), and [Ruslan Salakhutdinov](https://www.cs.cmu.edu/~rsalakhu/)<br>
+[Paul Pu Liang*](http://www.cs.cmu.edu/~pliang/), Terrance Liu*, [Liu Ziyin](http://cat.phys.s.u-tokyo.ac.jp/~zliu/), [Louis-Philippe Morency](https://www.cs.cmu.edu/~morency/), and [Ruslan Salakhutdinov](https://www.cs.cmu.edu/~rsalakhu/)<br>
 NeurIPS 2019 Workshop on Federated Learning (distinguished student paper award). (*equal contribution)
 
 ## Installation
