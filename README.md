@@ -14,17 +14,25 @@ NeurIPS 2019 Workshop on Federated Learning (distinguished student paper award).
 ## Installation
 
 First check that the requirements are satisfied:</br>
-Python 3.6/3.7</br>
-PyTorch 0.4.0</br>
-numpy 1.13.3</br>
-sklearn 0.20.0
+Python 3.6</br>
+torch 1.2.0</br>
+torchvision=0.4.0</br>
+numpy 1.18.1</br>
+sklearn 0.20.0</br>
+matplotlib 3.1.2</br>
+Pillow=4.1.1
 
 The next step is to clone the repository:
 ```bash
 git clone https://github.com/pliang279/LG-FedAvg.git
 ```
 
-# FedAvg
+## Data
+
+We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). To partition in the non-iid setting with 100 devices, we divide each dataset into 200 shards equal size where all examples in each shard have the same label. We then randomly assign 2 shards to each device. 
+
+
+## FedAvg
 
 Results can be reproduced using the following:
 
@@ -32,9 +40,9 @@ Results can be reproduced using the following:
 > python3 main_fed.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10
 
 #### CIFAR10 
-> python3 main_fed.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1--num_users 100 --frac 0.1 --local_ep 1 --local_bs 50
+> python3 main_fed.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50
 
-# LG-FedAvg
+## LG-FedAvg
 
 Results can be reproduced using the following:
 
