@@ -16,11 +16,11 @@ NeurIPS 2019 Workshop on Federated Learning (distinguished student paper award).
 First check that the requirements are satisfied:</br>
 Python 3.6</br>
 torch 1.2.0</br>
-torchvision=0.4.0</br>
+torchvision 0.4.0</br>
 numpy 1.18.1</br>
 sklearn 0.20.0</br>
 matplotlib 3.1.2</br>
-Pillow=4.1.1
+Pillow 4.1.1
 
 The next step is to clone the repository:
 ```bash
@@ -29,7 +29,7 @@ git clone https://github.com/pliang279/LG-FedAvg.git
 
 ## Data
 
-We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). See paper for how we process and partition the data for federated learning experiments.
+We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). See our paper for a description how we process and partition the data for federated learning experiments.
 
 
 ## FedAvg
