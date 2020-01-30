@@ -29,7 +29,7 @@ git clone https://github.com/pliang279/LG-FedAvg.git
 
 ## Data
 
-We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). To partition in the non-iid setting with 100 devices, we divide each dataset into 200 shards equal size where all examples in each shard have the same label. We then randomly assign 2 shards to each device. 
+We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). See paper for how we process and partition the data for federated learning experiments.
 
 
 ## FedAvg
