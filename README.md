@@ -4,6 +4,7 @@
 
 Correspondence to: 
   - Paul Liang (pliang@cs.cmu.edu)
+  - Terrance Liu (terrancl@cs.cmu.edu)
   
 ## Paper
 
