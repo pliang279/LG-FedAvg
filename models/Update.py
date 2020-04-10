@@ -5,7 +5,9 @@
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
 import math
+import pdb
 
 class DatasetSplit(Dataset):
     def __init__(self, dataset, idxs):
@@ -51,16 +53,6 @@ class LocalUpdate(object):
 
                 batch_loss.append(loss.item())
 
-                if not self.pretrain and self.args.verbose and batch_idx % 300 == 0:
-                    if idx < 0:
-                        print('Update Epoch: {} [{}/{} ({:.0f}%)], Epoch Loss: {:.4f}, Batch Loss: {:.4f}'.format(
-                            iter, batch_idx * len(images), len(self.ldr_train.dataset), 100. * batch_idx / len(self.ldr_train),
-                            sum(batch_loss)/len(batch_loss), loss.item()))
-                    else:
-                        print('Local model {}, Update Epoch: {} [{}/{} ({:.0f}%)], Epoch Loss: {:.4f}, Batch Loss: {:.4f}'.format(
-                            idx, iter, batch_idx * len(images), len(self.ldr_train.dataset), 100. * batch_idx / len(self.ldr_train),
-                            sum(batch_loss)/len(batch_loss), loss.item()))
-
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
@@ -74,7 +66,7 @@ class LocalUpdateMTL(object):
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
         self.pretrain = pretrain
 
-    def train(self, net, idx=-1, lr=0.1, omega=None, W_glob=None, i=None, w_glob_keys=None):
+    def train(self, net, lr=0.1, omega=None, W_glob=None, idx=None, w_glob_keys=None):
         net.train()
         # train and update
         optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.5)
@@ -98,12 +90,12 @@ class LocalUpdateMTL(object):
 
                 W_local = [net.state_dict(keep_vars=True)[key].flatten() for key in w_glob_keys]
                 W_local = torch.cat(W_local)
-                W[:, i] = W_local
+                W[:, idx] = W_local
 
                 loss_regularizer = 0
                 loss_regularizer += W.norm() ** 2
 
-                k = 10000
+                k = 4000
                 for i in range(W.shape[0] // k):
                     x = W[i * k:(i+1) * k, :]
                     loss_regularizer += x.mm(omega).mm(x.T).trace()
@@ -115,16 +107,6 @@ class LocalUpdateMTL(object):
                 optimizer.step()
 
                 batch_loss.append(loss.item())
-
-                if not self.pretrain and self.args.verbose and batch_idx % 300 == 0:
-                    if idx < 0:
-                        print('Update Epoch: {} [{}/{} ({:.0f}%)], Epoch Loss: {:.4f}, Batch Loss: {:.4f}'.format(
-                            iter, batch_idx * len(images), len(self.ldr_train.dataset), 100. * batch_idx / len(self.ldr_train),
-                            sum(batch_loss)/len(batch_loss), loss.item()))
-                    else:
-                        print('Local model {}, Update Epoch: {} [{}/{} ({:.0f}%)], Epoch Loss: {:.4f}, Batch Loss: {:.4f}'.format(
-                            idx, iter, batch_idx * len(images), len(self.ldr_train.dataset), 100. * batch_idx / len(self.ldr_train),
-                            sum(batch_loss)/len(batch_loss), loss.item()))
 
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
 

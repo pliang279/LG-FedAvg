@@ -9,7 +9,7 @@ Correspondence to:
 ## Paper
 
 [**Think Locally, Act Globally: Federated Learning with Local and Global Representations**](https://arxiv.org/abs/2001.01523)<br>
-[Paul Pu Liang*](http://www.cs.cmu.edu/~pliang/), Terrance Liu*, [Liu Ziyin](http://cat.phys.s.u-tokyo.ac.jp/~zliu/), [Louis-Philippe Morency](https://www.cs.cmu.edu/~morency/), and [Ruslan Salakhutdinov](https://www.cs.cmu.edu/~rsalakhu/)<br>
+[Paul Pu Liang*](http://www.cs.cmu.edu/~pliang/), Terrance Liu*, [Liu Ziyin](http://cat.phys.s.u-tokyo.ac.jp/~zliu/), [Ruslan Salakhutdinov](https://www.cs.cmu.edu/~rsalakhu/), and [Louis-Philippe Morency](https://www.cs.cmu.edu/~morency/)<br>
 NeurIPS 2019 Workshop on Federated Learning (distinguished student paper award). (*equal contribution)
 
 ## Installation
@@ -33,25 +33,38 @@ git clone https://github.com/pliang279/LG-FedAvg.git
 We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). See our paper for a description how we process and partition the data for federated learning experiments.
 
 
-## FedAvg
-
-Results can be reproduced using the following:
-
-#### MNIST 
-> python3 main_fed.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10
-
-#### CIFAR10 
-> python3 main_fed.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50
-
 ## LG-FedAvg
 
 Results can be reproduced using the following:
 
 #### MNIST
-> python3 main_lg.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10 --num_layers_keep 3
+> python main_lg.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10 --num_layers_keep 3
 
 #### CIFAR10 
-> python3 main_lg.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50 --num_layers_keep 2
+> python main_lg.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50 --num_layers_keep 2
+
+
+## FedAvg
+
+Results can be reproduced using the following:
+
+#### MNIST 
+> python main_fed.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10
+
+#### CIFAR10 
+> python main_fed.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50
+
+
+## MTL
+
+Results can be reproduced using the following:
+
+#### MNIST 
+> python main_mtl.py --dataset mnist --model mlp --num_classes 10 --epochs 500 --lr 0.05 --num_users 100 --frac 1 --local_ep 1 --local_bs 10 --num_layers_keep 5
+
+#### CIFAR10 
+> python main_mtl.py --dataset cifar10 --model cnn --num_classes 10 --epochs 1500 --lr 0.1 --num_users 100 --frac 1 --local_ep 1 --local_bs 50 --num_layers_keep 5
+
 
 If you use this code, please cite our paper:
 
