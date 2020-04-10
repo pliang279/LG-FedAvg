@@ -9,6 +9,7 @@ def args_parser():
     # federated arguments
     parser.add_argument('--epochs', type=int, default=10, help="rounds of training")
     parser.add_argument('--num_users', type=int, default=100, help="number of users: K")
+    parser.add_argument('--shard_per_user', type=int, default=2, help="classes per user")
     parser.add_argument('--frac', type=float, default=0.1, help="the fraction of clients: C")
     parser.add_argument('--local_ep', type=int, default=5, help="the number of local epochs: E")
     parser.add_argument('--local_bs', type=int, default=10, help="local batch size: B")
@@ -42,9 +43,9 @@ def args_parser():
     parser.add_argument('--print_freq', type=int, default=100, help="print loss frequency during training")
     parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
     parser.add_argument('--test_freq', type=int, default=1, help='how often to test on val set')
-    parser.add_argument('--load_fed', action='store_true', help='load pretrained federated model for local_global')
-    parser.add_argument('--load_fed_name', type=str, default='', help='define pretrained federated model path')
+    parser.add_argument('--load_fed', type=str, default='', help='define pretrained federated model path')
     parser.add_argument('--results_save', type=str, default='/', help='define fed results save folder')
+    parser.add_argument('--start_saving', type=int, default=0, help='when to start saving models')
 
     args = parser.parse_args()
     return args
