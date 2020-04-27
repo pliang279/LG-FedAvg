@@ -21,7 +21,7 @@ torchvision 0.4.0</br>
 numpy 1.18.1</br>
 sklearn 0.20.0</br>
 matplotlib 3.1.2</br>
-Pillow 4.1.1
+Pillow 4.1.1</br>
 
 The next step is to clone the repository:
 ```bash
