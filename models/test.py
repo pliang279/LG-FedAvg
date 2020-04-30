@@ -66,7 +66,7 @@ def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None):
     test_loss = 0
     correct = 0
     # data_loader = DataLoader(dataset, batch_size=args.bs)
-    data_loader = DataLoader(DatasetSplit(dataset, idxs), batch_size=args.bs, shuffle=True)
+    data_loader = DataLoader(DatasetSplit(dataset, idxs), batch_size=args.bs, shuffle=False)
     l = len(data_loader)
 
     for idx, (data, target) in enumerate(data_loader):

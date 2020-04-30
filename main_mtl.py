@@ -100,8 +100,7 @@ if __name__ == '__main__':
         idxs_users = np.random.choice(range(args.num_users), m, replace=False)
 
         W = torch.zeros((d, m)).cuda()
-        # for idx, user in enumerate(idxs_users):
-        for idx, user in enumerate(range(10)):
+        for idx, user in enumerate(idxs_users):
             W_local = [net_local_list[user].state_dict()[key].flatten() for key in w_glob_keys]
             W_local = torch.cat(W_local)
             W[:, idx] = W_local

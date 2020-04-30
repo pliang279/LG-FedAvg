@@ -28,13 +28,13 @@ results = {}
 args = args_parser()
 args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 args.num_classes = 10
-args.epochs = 100
+args.epochs = 200
 if args.dataset == "mnist":
     args.local_bs = 10
 else:
     args.local_bs = 50
 
-early_stopping = 20
+early_stopping = 100
 
 args.shard_per_user = 2
 for num_users in [5, 10, 20, 50, 100, 200, 500, 1000]:
