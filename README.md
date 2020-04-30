@@ -21,7 +21,7 @@ torchvision 0.4.0</br>
 numpy 1.18.1</br>
 sklearn 0.20.0</br>
 matplotlib 3.1.2</br>
-Pillow 4.1.1
+Pillow 4.1.1</br>
 
 The next step is to clone the repository:
 ```bash
@@ -35,7 +35,6 @@ We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/e
 ## FedAvg
 
 Results can be reproduced running the following:
-
 #### MNIST
 > python main_fed.py --dataset mnist --model mlp --num_classes 10 --epochs 1000 --lr 0.05 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 10 --results_save run1
 
@@ -61,7 +60,6 @@ Results can be reproduced running the following:
 
 #### CIFAR10 
 > python main_mtl.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 50 --num_layers_keep 5 --results_save run1
-
 
 If you use this code, please cite our paper:
 
