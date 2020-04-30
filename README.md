@@ -32,39 +32,34 @@ git clone https://github.com/pliang279/LG-FedAvg.git
 
 We run FedAvg and LG-FedAvg experiments on MNIST ([link](http://yann.lecun.com/exdb/mnist/)) and CIFAR10 ([link](https://www.cs.toronto.edu/~kriz/cifar.html)). See our paper for a description how we process and partition the data for federated learning experiments.
 
+## FedAvg
+
+Results can be reproduced running the following:
+#### MNIST
+> python main_fed.py --dataset mnist --model mlp --num_classes 10 --epochs 1000 --lr 0.05 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 10 --results_save run1
+
+#### CIFAR10 
+> python main_fed.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 50 --results_save run1
 
 ## LG-FedAvg
 
-Results can be reproduced using the following:
-
-#### MNIST
-> python main_lg.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10 --num_layers_keep 3
-
-#### CIFAR10 
-> python main_lg.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50 --num_layers_keep 2
-
-
-## FedAvg
-
-Results can be reproduced using the following:
+Results can be reproduced by first running the above commands for FedAvg and then running the following:
 
 #### MNIST 
-> python main_fed.py --dataset mnist --model mlp --num_classes 10 --epochs 1500 --lr 0.05 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 10
+> python main_lg.py --dataset mnist --model mlp --num_classes 10 --epochs 200 --lr 0.05 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 10 --num_layers_keep 3 --results_save run1 --load_fed best_400.pt
 
 #### CIFAR10 
-> python main_fed.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --frac 0.1 --local_ep 1 --local_bs 50
-
+> python main_lg.py --dataset cifar10 --model cnn --num_classes 10 --epochs 200 --lr 0.1 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 50 --num_layers_keep 2 --results_save run1 --load_fed best_1200.pt
 
 ## MTL
 
-Results can be reproduced using the following:
+Results can be reproduced running the following:
 
 #### MNIST 
-> python main_mtl.py --dataset mnist --model mlp --num_classes 10 --epochs 500 --lr 0.05 --num_users 100 --frac 1 --local_ep 1 --local_bs 10 --num_layers_keep 5
+> python main_mtl.py --dataset mnist --model mlp --num_classes 10 --epochs 1000 --lr 0.05 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 10 --num_layers_keep 5 --results_save run1
 
 #### CIFAR10 
-> python main_mtl.py --dataset cifar10 --model cnn --num_classes 10 --epochs 1500 --lr 0.1 --num_users 100 --frac 1 --local_ep 1 --local_bs 50 --num_layers_keep 5
-
+> python main_mtl.py --dataset cifar10 --model cnn --num_classes 10 --epochs 2000 --lr 0.1 --num_users 100 --shard_per_user 2 --frac 0.1 --local_ep 1 --local_bs 50 --num_layers_keep 5 --results_save run1
 
 If you use this code, please cite our paper:
 

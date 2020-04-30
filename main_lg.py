@@ -2,24 +2,18 @@
 # -*- coding: utf-8 -*-
 # Python version: 3.6
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import copy
 import os
+import pickle
 import itertools
+import pandas as pd
 import numpy as np
-from scipy.stats import mode
-from torchvision import datasets, transforms, models
 import torch
-from torch import nn
 
-from utils.sampling import mnist_iid, mnist_noniid, cifar10_iid, cifar10_noniid
 from utils.options import args_parser
+from utils.train_utils import get_data, get_model
 from models.Update import LocalUpdate
-from models.Nets import MLP, CNNMnist, CNNCifar, ResnetCifar
-from models.Fed import FedAvg
-from models.test import test_img, test_img_local
+from models.test import test_img_local_all, test_img_avg_all, test_img_ensemble_all, test_img_local
 
 import pdb
 
@@ -28,93 +22,25 @@ if __name__ == '__main__':
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
-    trans_mnist = transforms.Compose([transforms.ToTensor(),
-                                      transforms.Normalize((0.1307,), (0.3081,))])
+    base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/{}/'.format(
+        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.results_save)
 
-    if args.model == 'resnet':
-        trans_cifar_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
-                                                transforms.RandomHorizontalFlip(),
-                                                transforms.Resize([256,256]),
-                                                transforms.CenterCrop(224),
-                                                transforms.ToTensor(),
-                                                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                     std=[0.229, 0.224, 0.225])])
-        trans_cifar_val = transforms.Compose([transforms.Resize([256,256]),
-                                                transforms.CenterCrop(224),
-                                              transforms.ToTensor(),
-                                              transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                   std=[0.229, 0.224, 0.225])])
-    else:
-        trans_cifar_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
-                                                transforms.RandomHorizontalFlip(),
-                                                transforms.ToTensor(),
-                                                transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                     std=[0.229, 0.224, 0.225])])
-        trans_cifar_val = transforms.Compose([transforms.ToTensor(),
-                                              transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                   std=[0.229, 0.224, 0.225])])
+    assert(len(args.load_fed) > 0)
+    base_save_dir = os.path.join(base_dir, 'lg/{}'.format(args.load_fed))
+    if not os.path.exists(base_save_dir):
+        os.makedirs(base_save_dir, exist_ok=True)
 
-    # load dataset and split users
-    if args.dataset == 'mnist':
-        dataset_train = datasets.MNIST('data/mnist/', train=True, download=True, transform=trans_mnist)
-        dataset_test = datasets.MNIST('data/mnist/', train=False, download=True, transform=trans_mnist)
-        # sample users
-        if args.iid:
-            dict_users_train = mnist_iid(dataset_train, args.num_users)
-            dict_users_test = mnist_iid(dataset_test, args.num_users)
-        else:
-            dict_users_train, rand_set_all = mnist_noniid(dataset_train, args.num_users, num_shards=200, num_imgs=300, train=True)
-            dict_users_test, _ = mnist_noniid(dataset_test, args.num_users, num_shards=200, num_imgs=50, train=False, rand_set_all=rand_set_all)
-            save_path = './save/{}/randset_lg_{}_iid{}_num{}_C{}.pt'.format(
-                args.results_save, args.dataset, args.iid, args.num_users, args.frac)
-            np.save(save_path, rand_set_all)
-
-    elif args.dataset == 'cifar10':
-        dataset_train = datasets.CIFAR10('data/cifar10', train=True, download=True, transform=trans_cifar_train)
-        dataset_test = datasets.CIFAR10('data/cifar10', train=False, download=True, transform=trans_cifar_val)
-        if args.iid:
-            dict_users_train = cifar10_iid(dataset_train, args.num_users)
-            dict_users_test = cifar10_iid(dataset_test, args.num_users)
-        else:
-            dict_users_train, rand_set_all = cifar10_noniid(dataset_train, args.num_users, num_shards=200, num_imgs=250, train=True)
-            dict_users_test, _ = cifar10_noniid(dataset_test, args.num_users, num_shards=200, num_imgs=50, train=False, rand_set_all=rand_set_all)
-
-    elif args.dataset == 'cifar100':
-        dataset_train = datasets.CIFAR100('data/cifar100', train=True, download=True, transform=trans_cifar_train)
-        dataset_test = datasets.CIFAR100('data/cifar100', train=False, download=True, transform=trans_cifar_val)
-        if args.iid:
-            dict_users_train = cifar10_iid(dataset_train, args.num_users)
-            dict_users_test = cifar10_iid(dataset_test, args.num_users)
-        else:
-            dict_users_train, rand_set_all = cifar10_noniid(dataset_train, args.num_users, num_shards=1000, num_imgs=50, train=True)
-            dict_users_test, _ = cifar10_noniid(dataset_test, args.num_users, num_shards=1000, num_imgs=10, train=False, rand_set_all=rand_set_all)
-    else:
-        exit('Error: unrecognized dataset')
-    img_size = dataset_train[0][0].shape
+    dataset_train, dataset_test, dict_users_train, dict_users_test = get_data(args)
+    dict_save_path = os.path.join(base_dir, 'dict_users.pkl')
+    with open(dict_save_path, 'rb') as handle:
+        dict_users_train, dict_users_test = pickle.load(handle)
 
     # build model
-    if args.model == 'cnn' and args.dataset in ['cifar10', 'cifar100']:
-        net_glob = CNNCifar(args=args).to(args.device)
-    elif args.model == 'cnn' and args.dataset == 'mnist':
-        net_glob = CNNMnist(args=args).to(args.device)
-    elif args.model == 'resnet' and args.dataset in ['cifar10', 'cifar100']:
-        net_glob = ResnetCifar(args=args).to(args.device)
-    elif args.model == 'mlp':
-        len_in = 1
-        for x in img_size:
-            len_in *= x
-        net_glob = MLP(dim_in=len_in, dim_hidden=64, dim_out=args.num_classes).to(args.device)
-    else:
-        exit('Error: unrecognized model')
-
-    print(net_glob)
+    net_glob = get_model(args)
     net_glob.train()
-    if args.load_fed:
-        fed_model_path = './save/keep/fed_{}_{}_iid{}_num{}_C{}_le{}_gn{}.npy'.format(
-            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.grad_norm)
-        if len(args.load_fed_name) > 0:
-            fed_model_path = './save/keep/{}'.format(args.load_fed_name)
-        net_glob.load_state_dict(torch.load(fed_model_path))
+
+    fed_model_path = os.path.join(base_dir, 'fed/{}'.format(args.load_fed))
+    net_glob.load_state_dict(torch.load(fed_model_path))
 
     total_num_layers = len(net_glob.weight_keys)
     w_glob_keys = net_glob.weight_keys[total_num_layers - args.num_layers_keep:]
@@ -129,174 +55,58 @@ if __name__ == '__main__':
     percentage_param = 100 * float(num_param_glob) / num_param_local
     print('# Params: {} (local), {} (global); Percentage {:.2f} ({}/{})'.format(
         num_param_local, num_param_glob, percentage_param, num_param_glob, num_param_local))
+
     # generate list of local models for each user
     net_local_list = []
-    for user_ix in range(args.num_users):
+    for user in range(args.num_users):
         net_local_list.append(copy.deepcopy(net_glob))
 
-    criterion = nn.CrossEntropyLoss()
-
-
-    def test_img_ensemble_all():
-        probs_all = []
-        preds_all = []
-        for idx in range(args.num_users):
-            net_local = net_local_list[idx]
-            net_local.eval()
-            # _, _, probs = test_img(net_local, dataset_test, args, return_probs=True, user_idx=idx)
-            acc, loss, probs = test_img(net_local, dataset_test, args, return_probs=True, user_idx=idx)
-            # print('Local model: {}, loss: {}, acc: {}'.format(idx, loss, acc))
-            probs_all.append(probs.detach())
-
-            preds = probs.data.max(1, keepdim=True)[1].cpu().numpy().reshape(-1)
-            preds_all.append(preds)
-
-        labels = np.array(dataset_test.targets)
-        preds_probs = torch.mean(torch.stack(probs_all), dim=0)
-
-        # ensemble metrics
-        preds_avg = preds_probs.data.max(1, keepdim=True)[1].cpu().numpy().reshape(-1)
-        loss_test = criterion(preds_probs, torch.tensor(labels).to(args.device)).item()
-        acc_test = (preds_avg == labels).mean() * 100
-
-        return loss_test, acc_test
-
-    def test_img_local_all():
-        acc_test_local = 0
-        loss_test_local = 0
-        for idx in range(args.num_users):
-            net_local = net_local_list[idx]
-            net_local.eval()
-            a, b = test_img_local(net_local, dataset_test, args, user_idx=idx, idxs=dict_users_test[idx])
-
-            acc_test_local += a
-            loss_test_local += b
-        acc_test_local /= args.num_users
-        loss_test_local /= args.num_users
-
-        return acc_test_local, loss_test_local
-
-    def test_img_avg_all():
-        net_glob_temp = copy.deepcopy(net_glob)
-        w_keys_epoch = net_glob.state_dict().keys()
-        w_glob_temp = {}
-        for idx in range(args.num_users):
-            net_local = net_local_list[idx]
-            w_local = net_local.state_dict()
-
-            if len(w_glob_temp) == 0:
-                w_glob_temp = copy.deepcopy(w_local)
-            else:
-                for k in w_keys_epoch:
-                    w_glob_temp[k] += w_local[k]
-
-        for k in w_keys_epoch:
-            w_glob_temp[k] = torch.div(w_glob_temp[k], args.num_users)
-        net_glob_temp.load_state_dict(w_glob_temp)
-        acc_test_avg, loss_test_avg = test_img(net_glob_temp, dataset_test, args)
-
-        return acc_test_avg, loss_test_avg
-
-    if args.local_ep_pretrain > 0:
-        # pretrain each local model
-        pretrain_save_path = 'pretrain/{}/{}_{}/user_{}/ep_{}/'.format(args.model, args.dataset,
-                                                                       'iid' if args.iid else 'noniid', args.num_users,
-                                                                       args.local_ep_pretrain)
-        if not os.path.exists(pretrain_save_path):
-            os.makedirs(pretrain_save_path)
-
-        print("\nPretraining local models...")
-        for idx in range(args.num_users):
-            net_local = net_local_list[idx]
-            net_local_path = os.path.join(pretrain_save_path, '{}.pt'.format(idx))
-            if os.path.exists(net_local_path): # check if we have a saved model
-                net_local.load_state_dict(torch.load(net_local_path))
-            else:
-                local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users_train[idx], pretrain=True)
-                w_local, loss = local.train(net=net_local.to(args.device))
-                print('Local model {}, Train Epoch Loss: {:.4f}'.format(idx, loss))
-                torch.save(net_local.state_dict(), net_local_path)
-
-        print("Getting initial loss and acc...")
-        acc_test_local, loss_test_local = test_img_local_all()
-        acc_test_avg, loss_test_avg =  test_img_avg_all()
-        loss_test, acc_test = test_img_ensemble_all()
-
-        print('Initial Ensemble: Loss (local): {:.3f}, Acc (local): {:.2f}, Loss (avg): {:.3}, Acc (avg): {:.2f}, Loss (ens) {:.3f}, Acc: (ens) {:.2f}, '.format(
-            loss_test_local, acc_test_local, loss_test_avg, acc_test_avg, loss_test, acc_test))
+    acc_test_avg, loss_test_avg = test_img_avg_all(net_glob, net_local_list, args, dataset_test)
+    acc_test_local_list, _ = test_img_local_all(net_local_list, args, dataset_test, dict_users_test, return_all=True)
+    acc_test_local = acc_test_local_list.mean()
 
     # training
-    loss_train = []
-    cv_loss, cv_acc = [], []
-    val_loss_pre, counter = 0, 0
-    net_best = None
-    best_loss = None
-    best_acc = None
-    best_epoch = None
-    val_acc_list, net_list = [], []
+    results_save_path = os.path.join(base_save_dir, 'results.csv')
+    results_columns = ['epoch', 'acc_test_local', 'acc_test_avg', 'best_acc_local', 'acc_test_ens_avg', 'acc_test_ens_maj']
 
-    lr = args.lr
+    loss_train = []
+    best_iter = -1
+    best_acc_local = -1
+    best_acc_list = acc_test_local_list
+    best_net_list = copy.deepcopy(net_local_list)
+    fina_net_list = copy.deepcopy(net_local_list)
+
     results = []
+    results.append(np.array([-1, acc_test_local, acc_test_avg, acc_test_local, None, None]))
+    print('Round {:3d}, Acc (local): {:.2f}, Acc (avg): {:.2f}, Acc (local-best): {:.2f}'.format(
+        -1, acc_test_local, acc_test_avg, acc_test_local))
 
     for iter in range(args.epochs):
         w_glob = {}
-        loss_locals, grads_local = [], []
+        loss_locals = []
         m = max(int(args.frac * args.num_users), 1)
         idxs_users = np.random.choice(range(args.num_users), m, replace=False)
-        # w_keys_epoch = net_glob.state_dict().keys() if (iter + 1) % 25 == 0 else w_glob_keys
         w_keys_epoch = w_glob_keys
 
-        if args.verbose:
-            print("Round {}: lr: {:.6f}, {}".format(iter, lr, idxs_users))
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users_train[idx])
             net_local = net_local_list[idx]
 
-            w_local, loss = local.train(net=net_local.to(args.device), lr=lr)
+            w_local, loss = local.train(net=net_local.to(args.device), lr=args.lr)
             loss_locals.append(copy.deepcopy(loss))
-
-            modules_glob = set([x.split('.')[0] for x in w_keys_epoch])
-            modules_all = net_local.__dict__['_modules']
-
-            # use grads to calculate a weighted average
-            if not args.grad_norm:
-                grads = 1.0
-            else:
-                grads = []
-                for key in modules_glob:
-                    module = modules_all[key]
-                    grad = module.weight.grad
-                    if grad is not None:
-                        grads.append(grad.view(-1))
-
-                    try:
-                        grad = module.bias.grad
-                        if grad is not None:
-                            grads.append(grad.view(-1))
-                    except:
-                        pass
-                grads = torch.cat(grads).norm().item()
-            # print(grads)
-            grads_local.append(grads)
 
             # sum up weights
             if len(w_glob) == 0:
-                w_glob = copy.deepcopy(net_glob.state_dict())
-                for k in w_keys_epoch: # this depends on the layers being named the same (in Nets.py)
-                    w_glob[k] = w_local[k] * grads
+                w_glob = copy.deepcopy(w_local)
             else:
                 for k in w_keys_epoch:
-                    w_glob[k] += w_local[k] * grads
-
-        if (iter+1) % int(args.num_users * args.frac):
-            lr *= args.lr_decay
+                    w_glob[k] += w_local[k]
+        loss_avg = sum(loss_locals) / len(loss_locals)
+        loss_train.append(loss_avg)
 
         # get weighted average for global weights
         for k in w_keys_epoch:
-            w_glob[k] = torch.div(w_glob[k], sum(grads_local))
-
-        # copy weight to the global model (not really necessary)
-        net_glob.load_state_dict(w_glob)
+            w_glob[k] = torch.div(w_glob[k], m)
 
         # copy weights to each local model
         for idx in range(args.num_users):
@@ -304,68 +114,53 @@ if __name__ == '__main__':
             w_local = net_local.state_dict()
             for k in w_keys_epoch:
                 w_local[k] = w_glob[k]
-
             net_local.load_state_dict(w_local)
 
-        loss_avg = sum(loss_locals) / len(loss_locals)
-        loss_train.append(loss_avg)
+        # find best local models from after round
+        acc_test_local_list, _ = test_img_local_all(net_local_list, args, dataset_test, dict_users_test, return_all=True)
+        for user in range(args.num_users):
+            if acc_test_local_list[user] >= best_acc_list[user]:
+                best_acc_list[user] = acc_test_local_list[user]
+                best_net_list[user] = copy.deepcopy(net_local_list[user])
 
-        # eval
-        acc_test_local, loss_test_local = test_img_local_all()
-        acc_test_avg, loss_test_avg = test_img_avg_all()
+        # average best models for local test
+        acc_test_avg, loss_test_avg, net_glob = test_img_avg_all(net_glob, best_net_list, args, dataset_test, return_net=True)
 
-        # if (iter + 1) % args.test_freq == 0: # this takes too much time, so we run it less frequently
-        if (iter + 1) > 75:
-            loss_test, acc_test = test_img_ensemble_all()
-            print('Round {:3d}, Avg Loss {:.3f}, Loss (local): {:.3f}, Acc (local): {:.2f}, Loss (avg): {:.3}, Acc (avg): {:.2f}, Loss (ens) {:.3f}, Acc: (ens) {:.2f}, '.format(
-                iter, loss_avg, loss_test_local, acc_test_local, loss_test_avg, acc_test_avg, loss_test, acc_test))
-            results.append(np.array([iter, loss_avg, loss_test_local, acc_test_local, loss_test_avg, acc_test_avg, loss_test, acc_test]))
+        # average global layers of the best local models
+        best_net_list_avg = copy.deepcopy(best_net_list)
+        w_glob = net_glob.state_dict()
+        for net_local in best_net_list_avg:
+            w_local = net_local.state_dict()
+            for k in w_keys_epoch:
+                w_local[k] = w_glob[k]
+            net_local.load_state_dict(w_local)
 
-        else:
-            print('Round {:3d}, Avg Loss {:.3f}, Loss (local): {:.3f}, Acc (local): {:.2f}, Loss (avg): {:.3}, Acc (avg): {:.2f}'.format(
-                iter, loss_avg, loss_test_local, acc_test_local, loss_test_avg, acc_test_avg))
-            results.append(np.array([iter, loss_avg, loss_test_local, acc_test_local, loss_test_avg, acc_test_avg, np.nan, np.nan]))
+        acc_test_local, _ = test_img_local_all(best_net_list_avg, args, dataset_test, dict_users_test)
+        if acc_test_local > best_acc_local:
+            best_acc_local = acc_test_local
+            best_iter = iter
+            final_net_list = copy.deepcopy(best_net_list_avg)
 
+        print('Round {:3d}, Acc (local): {:.2f}, Acc (avg): {:.2f}, Acc (local-best): {:.2f}'.format(
+            iter, acc_test_local, acc_test_avg, best_acc_local))
+
+        results.append(np.array([iter, acc_test_local, acc_test_avg, best_acc_local, None, None]))
         final_results = np.array(results)
-        results_save_path = './log/lg_{}_{}_keep{}_iid{}_num{}_C{}_le{}_gn{}_pt{}_load{}_tfreq{}.npy'.format(
-            args.dataset, args.model, args.num_layers_keep, args.iid, args.num_users, args.frac,
-            args.local_ep, args.grad_norm, args.local_ep_pretrain, args.load_fed, args.test_freq)
-        np.save(results_save_path, final_results)
+        final_results = pd.DataFrame(final_results, columns=results_columns)
+        final_results.to_csv(results_save_path, index=False)
 
-        if best_acc is None or acc_test_local > best_acc:
-            best_acc = acc_test_local
-            best_epoch = iter
+    acc_test_local, loss_test_local = test_img_local_all(final_net_list, args, dataset_test, dict_users_test)
+    acc_test_avg, loss_test_avg = test_img_avg_all(net_glob, final_net_list, args, dataset_test)
+    acc_test_ens_avg, loss_test, acc_test_ens_maj = test_img_ensemble_all(final_net_list, args, dataset_test)
+    print('Best model, acc (local): {}, acc (avg): {}, acc (ens,avg): {}, acc (ens,maj): {}'.format(
+        acc_test_local, acc_test_avg, acc_test_ens_avg, acc_test_ens_maj))
 
-            for user in range(args.num_users):
-                model_save_path = './save/{}/{}_{}_iid{}/'.format(
-                    args.results_save, args.dataset, 0, args.iid)
-                if not os.path.exists(model_save_path):
-                    os.makedirs(model_save_path)
+    results.append(np.array([best_iter, None, acc_test_avg, acc_test_local, acc_test_ens_avg, acc_test_ens_maj]))
+    final_results = np.array(results)
+    final_results = pd.DataFrame(final_results, columns=results_columns)
+    final_results.to_csv(results_save_path, index=False)
 
-                model_save_path = './save/{}/{}_{}_iid{}/user{}.pt'.format(
-                    args.results_save, args.dataset, 0, args.iid, user)
-                torch.save(net_local_list[user].state_dict(), model_save_path)
-
-    for user in range(args.num_users):
-        model_save_path = './save/{}/{}_{}_iid{}/user{}.pt'.format(
-            args.results_save, args.dataset, 0, args.iid, user)
-
-        net_local = net_local_list[idx]
-        net_local.load_state_dict(torch.load(model_save_path))
-    loss_test, acc_test = test_img_ensemble_all()
-
-    print('Best model, iter: {}, acc: {}, acc (ens): {}'.format(best_epoch, best_acc, acc_test))
-
-
-    # plot loss curve
-    plt.figure()
-    plt.plot(range(len(loss_train)), loss_train)
-    plt.ylabel('train_loss')
-    plt.savefig('./log/fed_{}_{}_{}_C{}_iid{}.png'.format(args.dataset, args.model, args.epochs, args.frac, args.iid))
-
-    # testing
-    net_glob.eval()
-    acc_train, loss_train = test_img(net_glob, dataset_train, args)
-    acc_test, loss_test = test_img(net_glob, dataset_test, args)
-    print("Training accuracy: {:.2f}".format(acc_train))
-    print("Testing accuracy: {:.2f}".format(acc_test))
+    # save models
+    for user, net_local in enumerate(final_net_list):
+        model_save_path = os.path.join(base_save_dir, 'model_user{}.pt'.format(user))
+        torch.save(net_local.state_dict(), model_save_path)

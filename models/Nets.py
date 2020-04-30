@@ -102,26 +102,3 @@ class CNNCifar(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return F.log_softmax(x, dim=1)
-
-
-class ResnetCifar(nn.Module):
-    def __init__(self, args):
-        super(ResnetCifar, self).__init__()
-        self.extractor = models.resnet18(pretrained=False)
-        self.fflayer = nn.Sequential(nn.Linear(1000, args.num_classes))
-
-    def forward(self, x):
-        x = self.extractor(x)
-        x = self.fflayer(x)
-        return F.log_softmax(x, dim=1)
-
-class ResnetCifar(nn.Module):
-    def __init__(self, args):
-        super(ResnetCifar, self).__init__()
-        self.extractor = models.resnet18(pretrained=False)
-        self.fflayer = nn.Sequential(nn.Linear(1000, args.num_classes))
-
-    def forward(self, x):
-        x = self.extractor(x)
-        x = self.fflayer(x)
-        return F.log_softmax(x, dim=1)
