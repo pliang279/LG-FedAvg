@@ -12,6 +12,16 @@ Correspondence to:
 [Paul Pu Liang*](http://www.cs.cmu.edu/~pliang/), Terrance Liu*, [Liu Ziyin](http://cat.phys.s.u-tokyo.ac.jp/~zliu/), [Ruslan Salakhutdinov](https://www.cs.cmu.edu/~rsalakhu/), and [Louis-Philippe Morency](https://www.cs.cmu.edu/~morency/)<br>
 NeurIPS 2019 Workshop on Federated Learning (distinguished student paper award). (*equal contribution)
 
+If you find this repository useful, please cite our paper:
+```
+@article{liang2020think,
+  title={Think locally, act globally: Federated learning with local and global representations},
+  author={Liang, Paul Pu and Liu, Terrance and Ziyin, Liu and Salakhutdinov, Ruslan and Morency, Louis-Philippe},
+  journal={arXiv preprint arXiv:2001.01523},
+  year={2020}
+}
+```
+
 ## Installation
 
 First check that the requirements are satisfied:</br>
